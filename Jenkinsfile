@@ -2,20 +2,21 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('DOCKER_HUB_CREDENTIALS_ID') // Replace with your credentials ID
+        DOCKER_IMAGE = 'your-dockerhub-username/your-image-name' // Replace with your Docker Hub username and image name
+        DOCKER_TAG = 'latest'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                checkout scm // Check out the code from the repository
+                git branch: 'main', url: 'https://github.com/your-username/your-repo.git' // Replace with your GitHub repo URL
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh 'docker build -t mukilan18/sample:sample .'
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
                 }
             }
         }
@@ -23,8 +24,17 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    sh 'echo $DOCKER_HUB_CREDENTIALS_PSW | docker login -u $DOCKER_HUB_CREDENTIALS_USR --password-stdin'
-                    sh 'docker push mukilan18/sample:sample'
+                    docker.withRegistry('https://registry.hub.docker.com') {
+                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    sh "docker run -d --name your-container-name -p 8080:3000 ${DOCKER_IMAGE}:${DOCKER_TAG}" // Replace `3000` with your app's port
                 }
             }
         }
@@ -32,10 +42,10 @@ pipeline {
 
     post {
         success {
-            echo 'Docker image built and pushed successfully!'
+            echo 'Pipeline succeeded!'
         }
         failure {
-            echo 'Pipeline failed. Check the logs for details.'
+            echo 'Pipeline failed!'
         }
     }
 }
